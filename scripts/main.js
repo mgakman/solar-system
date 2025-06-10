@@ -1,9 +1,15 @@
-// 3D Solar System - Milestone 2 (Complete Solar System with High-Quality 2K Textures)
+// 3D Solar System - Milestone 3 (Enhanced Features and Effects)
 let scene, camera, renderer;
 let sun, planets = {}, planetGroups = {};
 let timeSpeed = 1;
 let raycaster, mouse;
 let textureLoader;
+
+// Milestone 3 systems
+let lightingSystem;
+let cameraController;
+let uiManager;
+let celestialObjectsManager;
 
 // Mouse control variables
 let mouseX = 0, mouseY = 0;
@@ -59,7 +65,7 @@ const planetData = {
 
 // Initialize the 3D scene
 function init() {
-    console.log("Initializing Complete Solar System with 4K textures...");
+    console.log("Initializing Enhanced Solar System with Milestone 3 features...");
     
     // Create scene
     scene = new THREE.Scene();
@@ -74,8 +80,6 @@ function init() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x000000);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
     const container = document.getElementById('container');
     container.appendChild(renderer.domElement);
@@ -86,12 +90,18 @@ function init() {
     raycaster = new THREE.Raycaster();
     mouse = new THREE.Vector2();
     
+    // Initialize Milestone 3 systems
+    lightingSystem = new LightingSystem(scene, renderer);
+    cameraController = new CameraController(camera, scene);
+    uiManager = new UIManager();
+    celestialObjectsManager = new CelestialObjectsManager(scene, textureLoader);
+    
     // Create celestial bodies
     createSun();
     createAllPlanets();
     
-    // Add lighting
-    addLighting();
+    // Add enhanced lighting (replaces basic lighting)
+    lightingSystem.createSunLighting(sun);
     
     // Add stars background
     createStars();
@@ -99,13 +109,22 @@ function init() {
     // Add orbital paths
     createOrbitalPaths();
     
+    // Create enhanced objects
+    celestialObjectsManager.createAsteroidBelt();
+    celestialObjectsManager.createDwarfPlanets();
+    celestialObjectsManager.createComets();
+    celestialObjectsManager.createKuiperBelt();
+    
     // Set up event listeners
     setupEventListeners();
     
-    // Create info panel
+    // Create info panel (replaced by enhanced UI)
     createInfoPanel();
     
-    console.log("Complete solar system initialization complete");
+    // Setup UI event listeners
+    uiManager.setupEventListeners(cameraController, setTimeSpeed);
+    
+    console.log("Enhanced solar system with Milestone 3 features complete");
     
     // Start animation loop
     animate();
@@ -203,6 +222,11 @@ function createEarthSystem() {
                     earth.name = data.name;
                     earth.userData = { info: data.info };
                     
+                    // Set clouds name and make them ignore raycasting
+                    clouds.name = "Earth Clouds";
+                    clouds.userData = { info: data.info, isEarth: true, parentName: "Earth" };
+                    clouds.raycast = () => {}; // Disable raycasting for clouds
+                    
                     earthGroup.add(earth);
                     earthGroup.add(clouds);
                     planets.earth = earth;
@@ -265,11 +289,15 @@ function createEarthFallback(earthGroup, data, earthTexture) {
     console.log("Earth created with fallback material");
 }
 
-// Create Moon with texture
+// Create Moon with proper orbit around Earth
 function createMoon(earthGroup) {
-    const moonGroup = new THREE.Group();
-    const moonGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+    console.log("=== CREATING PROPER ORBITING MOON ===");
     
+    // Create Moon group for orbital animation
+    const moonGroup = new THREE.Group();
+    const moonGeometry = new THREE.SphereGeometry(0.5, 32, 32); // Much larger for visibility
+    
+    // Load Moon texture for realistic appearance
     textureLoader.load(
         textureUrls.moon,
         function(moonTexture) {
@@ -277,41 +305,54 @@ function createMoon(earthGroup) {
                 map: moonTexture
             });
             const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-            moon.position.set(1.2, 0, 0);
+            moon.position.set(2.0, 0, 0); // Further from Earth center for clear visibility
             moon.castShadow = true;
             moon.receiveShadow = true;
             moon.name = "Moon";
-            moon.userData = { info: "Earth's natural satellite" };
+            moon.userData = { 
+                info: "Earth's natural satellite, formed 4.5 billion years ago",
+                type: "Moon",
+                diameter: "3,474 km",
+                distance: "384,400 km from Earth"
+            };
             
             moonGroup.add(moon);
             earthGroup.add(moonGroup);
             
             planets.moon = moon;
             planetGroups.moonGroup = moonGroup;
-            console.log("Moon created with texture");
+            
+            console.log("🌙 Moon created with texture and added to Earth group");
+            console.log("🌙 Moon local position relative to Earth:", moon.position);
         },
         function(progress) {
             console.log("Loading Moon texture: " + (progress.loaded / progress.total * 100) + '%');
         },
         function(error) {
-            console.error("Error loading Moon texture:", error);
-            // Fallback to simple material
+            console.error("Error loading Moon texture, using fallback:", error);
+            // Fallback with realistic gray color
             const moonMaterial = new THREE.MeshLambertMaterial({ 
-                color: fallbackColors.moon
+                color: 0xcccccc // Realistic gray color
             });
             const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-            moon.position.set(1.2, 0, 0);
+            moon.position.set(2.0, 0, 0); // Further from Earth center for clear visibility
             moon.castShadow = true;
             moon.receiveShadow = true;
             moon.name = "Moon";
-            moon.userData = { info: "Earth's natural satellite" };
+            moon.userData = { 
+                info: "Earth's natural satellite, formed 4.5 billion years ago",
+                type: "Moon",
+                diameter: "3,474 km",
+                distance: "384,400 km from Earth"
+            };
             
             moonGroup.add(moon);
             earthGroup.add(moonGroup);
             
             planets.moon = moon;
             planetGroups.moonGroup = moonGroup;
-            console.log("Moon created with fallback material");
+            
+            console.log("🌙 Moon created with fallback material and added to Earth group");
         }
     );
 }
@@ -551,6 +592,7 @@ function setupEventListeners() {
     
     // Mouse controls
     document.addEventListener('mousemove', onDocumentMouseMove);
+    document.addEventListener('wheel', onMouseWheel, { passive: false });
     
     // Mouse click for planet info
     renderer.domElement.addEventListener('click', onMouseClick);
@@ -583,18 +625,74 @@ function onDocumentMouseMove(event) {
     checkHover();
 }
 
+// Mouse wheel zoom handler
+function onMouseWheel(event) {
+    event.preventDefault();
+    
+    // Only apply zoom if camera is not locked or transitioning
+    if (cameraController && (cameraController.isLockedToTarget() || cameraController.isInTransition())) {
+        return;
+    }
+    
+    const zoomSpeed = 0.1;
+    const zoomDirection = event.deltaY > 0 ? 1 : -1;
+    
+    // Calculate zoom based on current distance from origin
+    const currentDistance = camera.position.length();
+    const zoomAmount = currentDistance * zoomSpeed * zoomDirection;
+    
+    // Apply zoom by moving camera closer/further from center
+    const direction = camera.position.clone().normalize();
+    const newPosition = camera.position.clone().add(direction.multiplyScalar(zoomAmount));
+    
+    // Limit zoom range (don't get too close or too far)
+    const minDistance = 5;
+    const maxDistance = 200;
+    const newDistance = newPosition.length();
+    
+    if (newDistance >= minDistance && newDistance <= maxDistance) {
+        camera.position.copy(newPosition);
+    }
+}
+
 // Mouse click handler
 function onMouseClick(event) {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(Object.values(planets).concat([sun]));
+    
+    // Get all objects for raycasting (including enhanced objects)
+    let allObjects = Object.values(planets).concat([sun]);
+    // Filter out Earth clouds to prevent click interference
+    allObjects = allObjects.filter(obj => obj.name !== "Earth Clouds");
+    if (celestialObjectsManager) {
+        allObjects = allObjects.concat(celestialObjectsManager.getAllObjects());
+    }
+    
+    const intersects = raycaster.intersectObjects(allObjects);
     
     if (intersects.length > 0) {
         const object = intersects[0].object;
-        showPlanetInfo(object);
+        console.log("Clicked object:", object.name, "Available info keys:", Object.keys(uiManager.planetInfo));
+        
+        // Handle special case for Earth clouds
+        let targetName = object.name;
+        if (object.userData && object.userData.isEarth && object.userData.parentName) {
+            targetName = object.userData.parentName;
+        }
+        
+        // Use enhanced UI if available
+        if (uiManager && targetName && uiManager.planetInfo[targetName.toLowerCase()]) {
+            uiManager.showDetailedInfo(targetName.toLowerCase());
+        } else {
+            console.log("Falling back to basic info for:", targetName);
+            showPlanetInfo(object);
+        }
     } else {
+        if (uiManager) {
+            uiManager.hideInfoPanel();
+        }
         hidePlanetInfo();
     }
 }
@@ -670,10 +768,20 @@ function hidePlanetInfo() {
 
 // Reset camera to initial position
 function resetCamera() {
-    camera.position.set(0, 20, 45);
-    mouseX = 0;
-    mouseY = 0;
+    if (cameraController) {
+        cameraController.resetToDefault();
+        cameraController.unlockCamera(); // Ensure camera is unlocked for free movement
+    } else {
+        camera.position.set(0, 20, 45);
+        mouseX = 0;
+        mouseY = 0;
+    }
     hidePlanetInfo();
+}
+
+// Set time speed (called by UI controls)
+function setTimeSpeed(speed) {
+    timeSpeed = speed;
 }
 
 // Handle window resize
@@ -712,10 +820,26 @@ function animate() {
         }
     });
     
-    // Special handling for Moon
-    if (planetGroups.moonGroup) {
-        planetGroups.moonGroup.rotation.y = time * 3;
-        planets.moon.rotation.y = time * 3;
+    // Special handling for Moon - make orbital motion very obvious
+    if (planetGroups.moonGroup && planets.moon) {
+        // Make Moon orbit Earth clearly visible - faster than realistic but obvious
+        planetGroups.moonGroup.rotation.y = time * 8; // Much faster orbital revolution around Earth
+        // Moon is tidally locked - same side always faces Earth (synchronous rotation)
+        planets.moon.rotation.y = time * 8; // Same rotation speed as orbit
+        
+        // Debug: Log Moon position more frequently for troubleshooting
+        if (Math.floor(time * 2) % 10 === 0 && Math.floor(time * 20) % 20 === 0) {
+            const worldPos = new THREE.Vector3();
+            planets.moon.getWorldPosition(worldPos);
+            console.log("🌙 MOON DEBUG - Group rotation:", planetGroups.moonGroup.rotation.y.toFixed(2), "World pos:", worldPos);
+            console.log("🌙 Moon local position:", planets.moon.position);
+            console.log("🌙 Moon visible:", planets.moon.visible);
+        }
+    } else {
+        // Debug why Moon might not be animating
+        if (Math.floor(time) % 10 === 0 && Math.floor(time * 10) % 10 === 0) {
+            console.log("❌ MOON MISSING - moonGroup exists:", !!planetGroups.moonGroup, "moon exists:", !!planets.moon);
+        }
     }
     
     // Rotate Earth clouds separately for realism
@@ -723,10 +847,30 @@ function animate() {
         planets.earthClouds.rotation.y = time * 1.2; // Slightly different speed
     }
     
-    // Camera movement based on mouse
-    camera.position.x += (mouseX * 10 - camera.position.x) * 0.05;
-    camera.position.y += (-mouseY * 10 - camera.position.y + 20) * 0.05;
-    camera.lookAt(scene.position);
+    // Update Milestone 3 systems
+    if (lightingSystem) {
+        lightingSystem.update(time);
+    }
+    
+    if (cameraController) {
+        cameraController.updateOrbiting(0.016); // Assuming 60fps for deltaTime
+        
+        // Only apply mouse movement if camera is not transitioning, orbiting, or locked to a target
+        if (!cameraController.isInTransition() && !cameraController.isOrbiting && !cameraController.isLockedToTarget()) {
+            camera.position.x += (mouseX * 10 - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY * 10 - camera.position.y + 20) * 0.05;
+            camera.lookAt(scene.position);
+        }
+    } else {
+        // Fallback to original mouse movement
+        camera.position.x += (mouseX * 10 - camera.position.x) * 0.05;
+        camera.position.y += (-mouseY * 10 - camera.position.y + 20) * 0.05;
+        camera.lookAt(scene.position);
+    }
+    
+    if (celestialObjectsManager) {
+        celestialObjectsManager.updateAll(time, timeSpeed);
+    }
     
     // Render the scene
     renderer.render(scene, camera);
