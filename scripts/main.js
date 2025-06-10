@@ -293,9 +293,12 @@ function createEarthFallback(earthGroup, data, earthTexture) {
 function createMoon(earthGroup) {
     console.log("=== CREATING PROPER ORBITING MOON ===");
     
-    // Create Moon group for orbital animation
+    // Create Moon group for orbital animation - position it at Earth's location
     const moonGroup = new THREE.Group();
-    const moonGeometry = new THREE.SphereGeometry(0.5, 32, 32); // Much larger for visibility
+    const earthData = planetData.earth;
+    moonGroup.position.set(earthData.distance, 0, 0); // Same position as Earth in the group
+    
+    const moonGeometry = new THREE.SphereGeometry(0.18, 32, 32); // Realistic size relative to Earth (about 1/4)
     
     // Load Moon texture for realistic appearance
     textureLoader.load(
@@ -305,7 +308,7 @@ function createMoon(earthGroup) {
                 map: moonTexture
             });
             const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-            moon.position.set(2.0, 0, 0); // Further from Earth center for clear visibility
+            moon.position.set(2.0, 0, 0); // Distance from Moon Group center (which is at Earth's position)
             moon.castShadow = true;
             moon.receiveShadow = true;
             moon.name = "Moon";
@@ -335,7 +338,7 @@ function createMoon(earthGroup) {
                 color: 0xcccccc // Realistic gray color
             });
             const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-            moon.position.set(2.0, 0, 0); // Further from Earth center for clear visibility
+            moon.position.set(2.0, 0, 0); // Distance from Moon Group center (which is at Earth's position)
             moon.castShadow = true;
             moon.receiveShadow = true;
             moon.name = "Moon";
@@ -805,8 +808,10 @@ function animate() {
         sun.rotation.y = time * 0.5;
     }
     
-    // Animate all planets
+    // Animate all planets (except Earth, which is handled specially with Moon)
     Object.keys(planetData).forEach(planetKey => {
+        if (planetKey === 'earth') return; // Skip Earth - handle it separately with Moon
+        
         const data = planetData[planetKey];
         const planetGroup = planetGroups[planetKey];
         const planet = planets[planetKey];
@@ -819,6 +824,15 @@ function animate() {
             planet.rotation.y = time * (data.speed * 10);
         }
     });
+    
+    // Special handling for Earth system - make it orbit Sun while Moon orbits Earth
+    if (planetGroups.earth && planets.earth) {
+        const earthData = planetData.earth;
+        // Earth orbits the Sun
+        planetGroups.earth.rotation.y = time * earthData.speed;
+        // Earth rotates on its axis
+        planets.earth.rotation.y = time * (earthData.speed * 10);
+    }
     
     // Special handling for Moon - make orbital motion very obvious
     if (planetGroups.moonGroup && planets.moon) {
