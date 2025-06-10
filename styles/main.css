@@ -1,0 +1,93 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+}
+
+#container {
+    width: 100vw;
+    height: 100vh;
+}
+
+#info {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+#info h1 {
+    font-size: 24px;
+    margin-bottom: 5px;
+    color: #ffd700;
+}
+
+#info p {
+    font-size: 14px;
+    color: #ccc;
+}
+
+#controls {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#resetCamera {
+    background: #ffd700;
+    color: #000;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+#resetCamera:hover {
+    background: #ffed4e;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-group label {
+    font-size: 14px;
+    min-width: 80px;
+}
+
+#timeSpeed {
+    width: 100px;
+}
+
+#speedValue {
+    font-size: 14px;
+    min-width: 30px;
+    color: #ffd700;
+}
+
+canvas {
+    display: block;
+} 
